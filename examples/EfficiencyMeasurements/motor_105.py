@@ -32,9 +32,9 @@ def run():
     log_directory = 'D:\\HardCopy\\'
 
     # Set the input parameters
-    max_voltage = 400
+    max_voltage = 100
     min_voltage = 0
-    voltage_step = 20
+    voltage_step = 10
     delay = .1
 
     DATA_COLUMNS = ['DateTime',
@@ -83,8 +83,6 @@ def run():
             sleep(5)
         except:
             source.output_disable()
-
-
 
         try:
             source_input_voltage = source.output_voltage
