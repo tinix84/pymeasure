@@ -20,6 +20,9 @@ import numpy as np
 import pandas as pd
 from time import sleep
 
+import os
+sys.path.append('D:/GitHub/rrr/pymeasure')
+
 from pymeasure.instruments.agilent import Agilent34461A, Agilent34465A
 from pymeasure.instruments.chroma import Chroma62024p6008
 from pymeasure.instruments.lecroy import WaveRunner606Zi
