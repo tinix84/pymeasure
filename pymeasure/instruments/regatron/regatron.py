@@ -12,9 +12,15 @@ local COM port to the operating system.
 from pymeasure.instruments import Instrument
 from pymeasure.adapters.serial import SerialAdapter
 
+import numpy as np
 
 import struct
 import serial
+
+import time
+
+timeout_rise_voltage = 0.1
+timeout_rise_power = 0.1
 
 class Regatron():
     """
@@ -375,6 +381,17 @@ class Regatron():
         
         return min_lvl, max_lvl
     
+    def riseVoltage(self, act_voltage, fin_voltage, max_voltage_step):
+        """
+        Rise output voltage with max_voltage_step
+        """
+        voltage_steps=np.linspace(act_voltage, fin_voltage, max_voltage_step)
+        for ii, voltage in enumerate(voltage_steps):
+            self.setVoltage(voltage=voltage)
+            time.sleep(timeout_rise_voltage)
+        
+        return 
+
     def setVoltage(self, voltage):
         """
         Set the voltage limit.
