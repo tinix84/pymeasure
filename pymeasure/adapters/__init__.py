@@ -1,7 +1,7 @@
 #
 # This file is part of the PyMeasure package.
 #
-# Copyright (c) 2013-2017 PyMeasure Developers
+# Copyright (c) 2013-2019 PyMeasure Developers
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,11 @@ try:
     from pymeasure.adapters.prologix import PrologixAdapter
 except ImportError:
     log.warning("PySerial library could not be loaded")
+
 try:
+    from pymeasure.adapters.vxi11 import VXI11Adapter
+except ImportError:
+    log.warning("VXI-11 library could not be loaded")
     from pymeasure.adapters.activedso import ActiveDSOAdapter
 except ImportError:
     log.warning("ActiveX DSO win32 library could not be loaded")

@@ -1,7 +1,7 @@
 #
 # This file is part of the PyMeasure package.
 #
-# Copyright (c) 2013-2017 PyMeasure Developers
+# Copyright (c) 2013-2019 PyMeasure Developers
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -73,9 +73,15 @@ class Keithley2400(Instrument, KeithleyBuffer):
         values={'current':'CURR', 'voltage':'VOLT'},
         map_values=True
     )
-    source_enabled = Instrument.measurement("OUTPUT?",
-        """ Reads a boolean value that is True if the source is enabled. """,
-        cast=bool
+
+    source_enabled = Instrument.control(
+        "OUTPut?", "OUTPut %d",
+        """A boolean property that controls whether the source is enabled, takes
+        values True or False. The convenience methods :meth:`~.Keithley2400.enable_source` and 
+        :meth:`~.Keithley2400.disable_source` can also be used.""",
+        validator=strict_discrete_set,
+        values={True: 1, False: 0},
+        map_values=True
     )
 
     ###############
@@ -111,7 +117,9 @@ class Keithley2400(Instrument, KeithleyBuffer):
     source_current = Instrument.control(
         ":SOUR:CURR?", ":SOUR:CURR:LEV %g",
         """ A floating point property that controls the source current
-        in Amps. """
+        in Amps. """,
+        validator=truncated_range,
+        values=[-1.05, 1.05]
     )
     source_current_range = Instrument.control(
         ":SOUR:CURR:RANG?", ":SOUR:CURR:RANG:AUTO 0;:SOUR:CURR:RANG %g",
@@ -196,7 +204,7 @@ class Keithley2400(Instrument, KeithleyBuffer):
         2 or 4.
         """,
         validator=strict_discrete_set,
-        values={4:1, 2:2},
+        values={4:1, 2:0},
         map_values=True
     )
 
@@ -273,7 +281,7 @@ class Keithley2400(Instrument, KeithleyBuffer):
         :param auto_range: Enables auto_range if True, else uses the set resistance
         """
         log.info("%s is measuring resistance." % self.name)
-        self.write(":SENS:FUNC RES;"
+        self.write(":SENS:FUNC 'RES';"
                    ":SENS:RES:MODE MAN;"
                    ":SENS:RES:NPLC %f;:FORM:ELEM RES;" % nplc)
         if auto_range:
