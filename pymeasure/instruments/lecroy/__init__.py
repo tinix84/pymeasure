@@ -23,3 +23,4 @@
 #
 
 from .waverunner606zi import WaveRunner606Zi
+from .waverunner import WaveRunner

@@ -1,14 +1,5 @@
 """
-This example demonstrates how to make a graphical interface to preform
-IV characteristic measurements. There are a two items that need to be
-changed for your system:
 
-1) Correct the GPIB addresses in IVProcedure.startup for your instruments
-2) Correct the directory to save files in MainWindow.queue
-
-Run the program by changing to the directory containing this file and calling:
-
-python iv_keithley.py
 
 """
 
@@ -23,16 +14,22 @@ from time import sleep
 import os
 import sys, time, msvcrt
 
-askuser_timeout = 3
+
 
 # sys.path.append('D:/GitHub/pymeasure')
 
 from pymeasure.instruments.agilent import Agilent34465A, Agilent34970A
 from pymeasure.virtual.thermometer import Thermometer
-from pymeasure.virtual.motor import HSM_BMWi3, ASM_EZW1
+from pymeasure.virtual.motor import HSM_BMWi3, ASM_EZW1, ASM_Raketa
 # from pymeasure.instruments.chroma import Chroma62024p6008
 from pymeasure.instruments.regatron import Regatron
 from pymeasure.instruments.lecroy import WaveRunner606Zi
+from pymeasure.user_io import ask_user, ask_user_timeout
+
+from desktopmagic.screengrab_win32 import (
+	getDisplayRects, saveScreenToBmp, saveRectToBmp, getScreenAsImage,
+	getRectAsImage, getDisplaysAsImages)
+
 
 eps = np.spacing(1)
 
@@ -50,69 +47,30 @@ def calc_loss_power(input_power: float, ouput_power: float):
     loss_power = input_power-ouput_power
     return loss_power
 
-def derating_current_point(Vcurr: float, Pcurr: float, Vmax: float, Imax: float, Pmax: float):
-    # applying current and voltage derating to power
-    Inew = np.minimum(Imax, Pcurr / (Vcurr+eps))
-    Pnew = Vcurr * Inew
-    return Inew, Pnew
 
 def measurements_pts():
     pass
 
-def timeStamped(fname: str, fmt='%Y%m%d%H%M%S{fname}'):
+def time_stamped(fname: str, fmt='%Y%m%d%H%M%S{fname}'):
     return datetime.datetime.now().strftime(fmt).format(fname=fname)
 
-def getFilenamePrintScreen(set_input_voltage, set_output_power, set_duty, set_fsw):
-    filename = ('%sVin%d_Po%.2e_D%.2f_fsw%.1fk' % (timeStamped('_'),
+def get_filename_print_screen(set_input_voltage, set_output_power, set_duty, set_fsw):
+    filename = ('%sVin%d_Po%.2e_D%.2f_fsw%.1fk' % (time_stamped('_'),
                 set_input_voltage,
                 set_output_power,
                 set_duty,
                 set_fsw/1000))
     return filename
 
-def ask_user():
-    print('================================')
-    check = str(input("Continue ? ([y]/n): ")).lower().strip()
-    try:
-        if check[:1] == 'y':
-            return True
-        elif check[:1] == 'n':
-            return False
-        elif check[:1] == '':
-            return True
-        else:
-            print('Invalid Input')
-            return ask_user()
-    except Exception as error:
-        print("Please enter valid inputs")
-        print(error)
-        return ask_user()
+
+def load_test_cases(xls_filename, test_cases_sheet):
+    # usecols = ['TCN', 'Vi (V)', 'Vo (V)', 'Po (W)']
+    df_tc = pd.read_excel(io=xls_filename, sheet_name=test_cases_sheet, skiprows=1, usecols=usecols)
+    # df_tc = df_tc.rename(index=str, columns={'OPN': 'OPN', 'Vi (V)': 'Vin', 'Vo (V)': 'Vout_ref', 'Po (W)': 'Pout_ref'})
+    # df_tc = df_tc.set_index('TCN')
+    return df_tc
 
 
-def ask_user_timeout():
-    startTime = time.time()
-    inp = None
-    print('\n================================')
-    print("Press any key to stop or wait x seconds...")
-    while True:
-        if msvcrt.kbhit():
-            inp = msvcrt.getch()
-            break
-        elif time.time() - startTime > askuser_timeout:
-            break
-    if inp:
-        print("Stopping...")
-        return False
-    else:
-        print("Timed out and go on...")
-        return True
-
-def print_preset_value(psu:Regatron):
-    print('VQ1[V] = %f' % psu.getVoltagePreset())
-    print('IQ1[A] = %f' % psu.getCurrentPreset())
-    print('IQ4[A]  = %f' % psu.getCurrentLimitQ4())
-    print('PQ1[kW] = %f' % psu.getPowerPreset())
-    print('PQ4[kW]  = %f' % psu.getPowerLimitQ4())
 
 
 def run(input_data: dict):
@@ -134,29 +92,6 @@ def run(input_data: dict):
 
     if max_input_power > 32e3:
         max_input_power = 32e3
-
-#    delay = .1
-#
-#    DATA_COLUMNS = ['DateTime',
-#                    'Modulation',
-#                    'fs_set(Hz)',
-#                    'D_set(-)',
-#                    'Vin_set',
-#                    'Pout_set',
-#                    # INPUT MEASUREMENTS
-#                    'SourceInputVoltage(V)',
-#                    'DMMInputVoltage(V)',
-#                    'SourceInputCurrent(A)',
-#                    'SourceInputPower(A)',
-#                    # OUTPUT MEASUREMENTS
-#                    'SinkOutputVoltage(V)',
-#                    'DMMOutputVoltage(V)',
-#                    'SinkOutputCurrent(A)',
-#                    'SinkOutputPower(A)',
-#                    # OSCILLOSCOPE MEASUREMENTS
-#                    'fs_meas(Hz)',
-#                    'Duty100(-)']
-#    data = pd.DataFrame(columns=DATA_COLUMNS)
 
     data =  pd.DataFrame()
 
@@ -204,40 +139,7 @@ def run(input_data: dict):
     print('==SINK INIT==============================')
     print_preset_value(sink)
 
-    input_voltages = np.linspace(min_input_voltage, max_input_voltage,
-                                 np.ceil((max_input_voltage - min_input_voltage) / step_input_voltage))
-    output_powers = np.arange(input_data.min_output_power, input_data.max_output_power * 1.05,
-                              input_data.step_output_power)
-    input_voltages_rev = np.flip(input_voltages, axis=0)
-    output_powers_rev = np.flip(output_powers, axis=0)
 
-    loop_v = np.zeros((1, 2))
-
-    # build startup voltage ramp
-    startup_input_voltages = np.arange(step_input_voltage, max_input_voltage, step_input_voltage)
-    for ii, voltage in enumerate(startup_input_voltages):
-        loop_v = np.vstack((loop_v, [voltage, 0]))
-
-    # build loops voltage/power
-    direction = 1
-    for ii, voltage in enumerate(input_voltages_rev):
-        direction = (direction + 1) % 2
-        for jj, power in enumerate(output_powers):
-            if direction == 0:
-                loop_v = np.vstack((loop_v, [voltage, output_powers[jj]]))
-            elif direction == 1:
-                loop_v = np.vstack((loop_v, [voltage, output_powers_rev[jj]]))
-
-    input_powers = loop_v[:, 1] + input_data.worstcase_losses
-    input_currents = input_powers / (loop_v[:, 0] + eps)
-    output_voltages = loop_v[:, 0] / input_data.D_set
-
-    print('==LOOPS OVERVIEW==============================')
-    print('min input voltage: %f' % min_input_voltage)
-    print('max input voltage: %f' % max_input_voltage)
-    print('loop iterations:')
-    print('¦¦ Input Voltage ¦¦ Output power ¦¦')
-    print(loop_v)
 
     if ask_user():
 
@@ -297,7 +199,7 @@ def run(input_data: dict):
                     switching_freq = float(scope.get_measurement_Px(8))
                     duty_boost = float(scope.get_measurement_Px(7))
                     scope.save_c2_trc()
-                    scope.save_screen_to_file(filename=getFilenamePrintScreen(set_input_voltage,
+                    scope.save_screen_to_file(filename=get_filename_print_screen(set_input_voltage,
                                                                                 set_output_power,
                                                                                 input_data.D_set,
                                                                                 input_data.fsw_set))
@@ -331,7 +233,7 @@ def run(input_data: dict):
                 sink.powerOff()
                 sink.close()
 
-                data.to_csv(timeStamped('_') + '.csv')
+                data.to_csv(time_stamped('_') + '.csv')
 
                 return 0
 
@@ -361,7 +263,7 @@ def run(input_data: dict):
             # print('Rloss = %f' % Rloss)
 
             data_dict = {
-                'DateTime': timeStamped('_'),
+                'DateTime': time_stamped('_'),
                 'Modulation': input_data.modulation,
                 'fs_set(Hz)': input_data.fsw_set,
                 'D_set(-)': input_data.D_set,
@@ -406,19 +308,26 @@ def run(input_data: dict):
         sink.close()
         thermo.close()
 
-        data.to_csv(timeStamped('_') + '.csv')
+        data.to_csv(time_stamped('_') + '.csv')
 
     return -1
 
+class Booster():
+    def __init__(self):
+        
 
 if __name__ == "__main__":
 
+    tc_filename = "test_cases.xlsx"
+    # load op/cfg to varin
+    tc_df = load_test_cases(xls_filename=tc_filename)
+
     input_data=HSM_BMWi3()
     # Set the input parameters
-    input_data.modulation = 'D1110'  # YUVW configuration 1=enable
-    # os.system("python .\hwrcommunication.py setFrequency 15")
+    input_data.modulation = 'Y2UW'  # YUVW configuration 1=enable
+    # os.system("python .\hwrcommunication.py setFrequency 16")
     input_data.D_set = .55
-    input_data.fsw_set = 15e3
+    input_data.fsw_set = 16e3
 
     # dsp = Microcontroller()
     # dsp.set_duty(duty=input_data.D_set)

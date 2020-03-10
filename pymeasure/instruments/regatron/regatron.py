@@ -29,6 +29,8 @@ class Regatron():
     
     def __init__(self, port_str):            
         self.port = serial.Serial(port=port_str,baudrate=38400, bytesize=8, parity='N', stopbits=1, timeout=1.0)
+        self._serial = None
+        self._fw = None
 
     def open(self):
         # Configure the COM Port
@@ -592,3 +594,11 @@ class Regatron():
         power_preset = power_pu/(4000.0)*max_lvl
         
         return power_preset
+
+    def print_preset_value(self):
+        print('VQ1[V] = %f' % self.getVoltagePreset())
+        print('IQ1[A] = %f' % self.getCurrentPreset())
+        print('PQ1[kW] = %f' % self.getPowerPreset())
+        print('VQ4[V] = %f' % self.getVoltageLimitQ4())
+        print('IQ4[A]  = %f' % self.getCurrentLimitQ4())
+        print('PQ4[kW]  = %f' % self.getPowerLimitQ4())
