@@ -68,10 +68,52 @@ class WaveRunner606Zi(ActiveDSOInstrument):
         value = self.adapter.ask("VBS? 'return=app.Measure.P%d.Out.Result.Value' " % num)
         return value
 
-    def print_screen_autoname(self):
-        """this fucntion print the screen to HDD in Oscillo
+    def save_c1_trc(self):
+        """Save C1 Analog Waveform in TRC format"""
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.SaveSource = \"C1\"' ")
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.DoSave' ")
+        """Wait until all traces are saved"""
+        self.adapter.write("*OPC?")
+        txt =  self.adapter.read()
+
+    def save_c2_trc(self):
+        """Save C2 Analog Waveform in TRC format"""
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.SaveSource = \"C2\"' ")
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.DoSave' ")
+        """Wait until all traces are saved"""
+        self.adapter.write("*OPC?")
+        txt =  self.adapter.read()
+
+    def save_c3_trc(self):
+        """Save C3 Analog Waveform in TRC format"""
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.SaveSource = \"C3\"' ")
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.DoSave' ")
+        """Wait until all traces are saved"""
+        self.adapter.write("*OPC?")
+        txt =  self.adapter.read()        
+
+    def save_c4_trc(self):
+        """Save C4 Analog Waveform in TRC format"""
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.SaveSource = \"C4\"' ")
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.DoSave' ")
+        """Wait until all traces are saved"""
+        self.adapter.write("*OPC?")
+        txt =  self.adapter.read()
+    
+    def save_all_displayed_trc(self):
+        """Save "All Displayed" Analog Waveforms"""
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.SaveSource = \"AllDisplayed\"' ")
+        self.adapter.write("VBS 'app.SaveRecall.Waveform.DoSave' ")
+        """Wait until all traces are saved"""
+        self.adapter.write("*OPC?")
+        txt =  self.adapter.read()
+
+    def save_screen_to_file(self, filename):
+        """this function print the screen to HDD in Oscillo
         I met some problem with StoreHardcopyToFile due to oscillo crash"""
         #self.adapter.connection.StoreHardcopyToFile("TIFF", "", "D:\\HardCopy\\TIFFImage.tif")
+        self.adapter.write("VBS 'app.Hardcopy.EnableCounterSuffix = \"False\"' ")
+        self.adapter.write("VBS 'app.Hardcopy.PreferredFilename = \"%s.png\"' " % filename)
         self.adapter.write("VBS? 'app.Hardcopy.Print' ")
 
     class Measurement(object):

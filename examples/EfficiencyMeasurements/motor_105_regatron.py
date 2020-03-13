@@ -28,8 +28,8 @@ askuser_timeout = 3
 # sys.path.append('D:/GitHub/pymeasure')
 
 from pymeasure.instruments.agilent import Agilent34465A, Agilent34970A
-from pymeasure.virtual.thermometer import Thermometer
-from pymeasure.virtual.motor import HSM_BMWi3, ASM_EZW1
+# from pymeasure.virtual.thermometer import Thermometer
+from pymeasure.virtual.motor import HSM_BMWi3, ASM_EZW1, SSM_ZOE
 # from pymeasure.instruments.chroma import Chroma62024p6008
 from pymeasure.instruments.regatron import Regatron
 from pymeasure.instruments.lecroy import WaveRunner606Zi
@@ -165,8 +165,8 @@ def run(input_data: dict):
     print("Setting up instruments")
     logging.info("Setting up instruments")
 
-    com_port_source = 'COM7'
-    com_port_sink = 'COM4'
+    com_port_source = 'COM13'
+    com_port_sink = 'COM7'
 
     source = Regatron(com_port_source)
     source.open()
@@ -179,15 +179,17 @@ def run(input_data: dict):
     # scope = WaveRunner606Zi('146.136.35.172')
     # # Waverunner 3024
     # scope = WaveRunner606Zi('146.136.35.170')
-    # Waverunner 8104-MS
-    scope = WaveRunner606Zi('146.136.35.134')
+    # # Waverunner 8104-MS
+    # scope = WaveRunner606Zi('146.136.35.134')
+    # Waverunner 625Zi
+    scope = WaveRunner606Zi('146.136.35.172')
     print(scope.id)
     dmm_vin = Agilent34465A('TCPIP0::146.136.35.174::inst0::INSTR')
     print(dmm_vin.id)
     dmm_vout = Agilent34465A('TCPIP0::146.136.35.176::inst0::INSTR')
     print(dmm_vout.id)
-    thermo = Thermometer(Agilent34970A('ASRL1::INSTR'))
-    print(thermo.id())
+    # thermo = Thermometer(Agilent34970A('ASRL1::INSTR'))
+    # print(thermo.id())
     
 
     source.powerOff()
@@ -292,31 +294,29 @@ def run(input_data: dict):
 
                     meas_input_voltage = dmm_vin.voltage_dc
                     meas_output_voltage = dmm_vout.voltage_dc
+                except:
+                    print('error occurred at Vin=%f, Pout=%f' % (set_input_voltage, set_output_power))
+                    source.powerOff()
+                    sink.powerOff()
 
-                    # if DSO the frequency and duty are measur. Nr7-8
-                    switching_freq = float(scope.get_measurement_Px(8))
-                    duty_boost = float(scope.get_measurement_Px(7))
-                    scope.save_c2_trc()
-                    scope.save_screen_to_file(filename=getFilenamePrintScreen(set_input_voltage,
-                                                                                set_output_power,
-                                                                                input_data.D_set,
-                                                                                input_data.fsw_set))
+
+                try:
                     # if waverunner the frequency and duty are measur. Nr1-2
                     # input_current_ph = np.nan #float(scope.get_measurement_Px(3))
                     # switching_freq = float(scope.get_measurement_Px(2))
                     # duty_boost = float(scope.get_measurement_Px(1))
+                    # if DSO the frequency and duty are measur. Nr7-8
 
+                    switching_freq = float(scope.get_measurement_Px(8))
+                    duty_boost = float(scope.get_measurement_Px(7))
                 except:
-                    print('error occurred at Vin=%f, Pout=%f' % (set_input_voltage, set_output_power))
-                    # meas_input_voltage = dmm_vin.voltage_dc
-                    # meas_output_voltage = dmm_vout.voltage_dc
+                    switching_freq = None
+                    duty_boost = None
 
-                    # switching_freq = float(scope.get_measurement_Px(8))
-                    # duty_boost = float(scope.get_measurement_Px(7))
-                    # # switching_freq = float(scope.get_measurement_Px(2))
-                    # # duty_boost = float(scope.get_measurement_Px(1))
-                    source.powerOff()
-                    sink.powerOff()
+                scope.save_screen_to_file(filename=getFilenamePrintScreen(set_input_voltage,
+                                                                            set_output_power,
+                                                                            input_data.D_set,
+                                                                            input_data.fsw_set))
             else:
                 print('\n================================')
                 print('Finishing')
@@ -382,13 +382,14 @@ def run(input_data: dict):
                 'Duty100(-)': duty_boost}
 
             # pprint.pprint(data_dict, depth=1, width=60)
-            temp_lst=thermo.get_all_temperatures()
-            print(dict(temp_lst))
+            # temp_lst=thermo.get_all_temperatures()
+            # print(dict(temp_lst))
             
             df2 = pd.DataFrame([data_dict], columns=data_dict.keys())
-            df_temp = pd.DataFrame([dict(temp_lst)])
-            foo=pd.concat([df2, df_temp], axis=1, ignore_index=False)
-            
+            # df_temp = pd.DataFrame([dict(temp_lst)])
+            # foo=pd.concat([df2, df_temp], axis=1, ignore_index=False)
+            foo=pd.concat([df2], axis=1, ignore_index=False)
+
             data = pd.concat([data, foo], axis=0, ignore_index=True)
             data.to_csv('temp.csv')
         print('================================')
@@ -404,7 +405,7 @@ def run(input_data: dict):
         sleep(1)
         sink.powerOff()
         sink.close()
-        thermo.close()
+        # thermo.close()
 
         data.to_csv(timeStamped('_') + '.csv')
 
@@ -413,12 +414,12 @@ def run(input_data: dict):
 
 if __name__ == "__main__":
 
-    input_data=HSM_BMWi3()
+    input_data=SSM_ZOE()
     # Set the input parameters
-    input_data.modulation = 'D1110'  # YUVW configuration 1=enable
+    input_data.modulation = 'CCM_Y2VW'  # YUVW configuration 1=enable
     # os.system("python .\hwrcommunication.py setFrequency 15")
-    input_data.D_set = .55
-    input_data.fsw_set = 15e3
+    input_data.D_set = .5
+    input_data.fsw_set = 25e3
 
     # dsp = Microcontroller()
     # dsp.set_duty(duty=input_data.D_set)
@@ -426,8 +427,7 @@ if __name__ == "__main__":
     # dsp.set_UV2W()
 
     input_data.worstcase_losses = 8000
-
-    input_data.max_output_voltage = 60
+    input_data.max_output_voltage = 200
     input_data.output_voltage_step = 50
     # max_output_voltage_step = 50
 

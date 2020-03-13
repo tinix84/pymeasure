@@ -35,3 +35,15 @@ class HSM_BMWi3(MotorData):
         self.max_output_power = 60e3
         self.min_output_power = 0
         self.step_output_power = 750
+
+
+class SSM_ZOE(MotorData):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.worstcase_losses = 8e3
+        self.max_output_voltage = 400
+        self.min_output_voltage = 20
+        self.output_voltage_step = 50
+        self.max_output_power = 60e3
+        self.min_output_power = 0
+        self.step_output_power = 750
